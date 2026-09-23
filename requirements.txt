@@ -1,0 +1,6 @@
+boto3==1.40.30
+mysql-connector-python==9.4.0
+pandas==2.3.3
+psycopg2-binary==2.9.10
+pymongo==4.18.1
+python-dotenv==1.2.3

@@ -9,3 +9,9 @@ Thumbs.db
 # Python cache
 __pycache__/
 *.pyc
+
+# Artefactos de ejecución y construcción
+.venv/
+dist/
+build/
+*.egg-info/

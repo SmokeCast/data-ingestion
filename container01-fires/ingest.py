@@ -1,42 +1,28 @@
-import mysql.connector 
-import pandas as pd
-import boto3 
-from datetime import datetime
+"""Extrae el 100% de las tablas de MS1 y las carga en S3 como CSV."""
 import os
+from datetime import datetime
+from pathlib import Path
+import boto3
+import mysql.connector
+import pandas as pd
 from dotenv import load_dotenv
 
-# Cargar las variables de entorno
-load_dotenv()
-
-filename = f"fire_detections_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-conn = None
-
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+connection = mysql.connector.connect(host=os.getenv("FIRE_DB_HOST", "127.0.0.1"), port=int(os.getenv("FIRE_DB_PORT", "3306")), user=os.getenv("FIRE_DB_USER", "root"), password=os.getenv("FIRE_DB_PASSWORD", ""), database=os.getenv("FIRE_DB_NAME", "db1_fire_catalog"), connect_timeout=5)
+s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-1"))
+bucket = os.environ["S3_BUCKET"]
+prefix = os.getenv("S3_PREFIX", "").strip("/")
+files = []
 try:
-    
-    #Configuración de base de datos MySQL
-    print(f"Conectando a MySQL en {os.getenv('DB_HOST', 'localhost')}...")
-    conn = mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME", "fire_catalog"),
-        connect_timeout=5
-    )
-    df = pd.read_sql("SELECT * FROM fire_detections", conn)
-    df.to_csv(filename, index=False)
-    print(f"Archivo local generado: {filename} ({len(df):,} filas extraidas)")
-    
-    s3_bucket = os.getenv("S3_BUCKET", "smokecast-datalake")
-    print(f"Subiendo {filename} a s3://{s3_bucket}/fires/...")
-    s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-1"))
-    s3.upload_file(filename, s3_bucket, f"fires/{filename}")
-    print("Subido a S3 correctamente.")
-
-except Exception as e:
-    print(f"Error: {e}")
-    raise e
+    for table in ("fire_events", "fire_detections"):
+        filename = Path(f"{table}_{stamp}.csv")
+        pd.read_sql_query(f"SELECT * FROM {table}", connection).to_csv(filename, index=False)
+        key = f"{prefix}/ms1/{table}/{filename.name}" if prefix else f"ms1/{table}/{filename.name}"
+        s3.upload_file(str(filename), bucket, key)
+        files.append(filename)
+        print(f"MS1: {table} exportada y cargada en s3://{bucket}/{key}")
 finally:
-    if conn:
-        conn.close()
-    if os.path.exists(filename):
-        os.remove(filename)
+    connection.close()
+    for filename in files:
+        filename.unlink(missing_ok=True)

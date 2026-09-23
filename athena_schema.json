@@ -1,0 +1,78 @@
+{
+  "database": "smokecast_analytics",
+  "formats": {
+    "relational": "csv",
+    "document": "jsonl"
+  },
+  "tables": {
+    "fire_events": {
+      "format": "csv",
+      "s3_prefix": "ms1/fire_events/",
+      "columns": [
+        {"name": "id", "type": "bigint"},
+        {"name": "centroid_lat", "type": "double"},
+        {"name": "centroid_lon", "type": "double"},
+        {"name": "max_frp", "type": "double"},
+        {"name": "detection_count", "type": "int"},
+        {"name": "first_detected_at", "type": "timestamp"},
+        {"name": "last_detected_at", "type": "timestamp"},
+        {"name": "country_hint", "type": "string"}
+      ]
+    },
+    "fire_detections": {
+      "format": "csv",
+      "s3_prefix": "ms1/fire_detections/",
+      "columns": [
+        {"name": "id", "type": "bigint"},
+        {"name": "fire_event_id", "type": "bigint"},
+        {"name": "latitude", "type": "double"},
+        {"name": "longitude", "type": "double"},
+        {"name": "brightness", "type": "double"},
+        {"name": "frp", "type": "double"},
+        {"name": "confidence", "type": "string"},
+        {"name": "acq_date", "type": "date"},
+        {"name": "acq_time", "type": "string"}
+      ]
+    },
+    "cities": {
+      "format": "csv",
+      "s3_prefix": "ms2/cities/",
+      "columns": [
+        {"name": "id", "type": "bigint"},
+        {"name": "name", "type": "string"},
+        {"name": "country", "type": "string"},
+        {"name": "latitude", "type": "double"},
+        {"name": "longitude", "type": "double"},
+        {"name": "population", "type": "bigint"}
+      ]
+    },
+    "sensitive_sites": {
+      "format": "csv",
+      "s3_prefix": "ms2/sensitive_sites/",
+      "columns": [
+        {"name": "id", "type": "bigint"},
+        {"name": "city_id", "type": "bigint"},
+        {"name": "name", "type": "string"},
+        {"name": "type", "type": "string"}
+      ]
+    },
+    "weather_readings": {
+      "s3_prefix": "ms3/weather_readings/",
+      "format": "jsonl",
+      "columns": [
+        {"name": "city_id", "type": "bigint"},
+        {"name": "city_name", "type": "string"},
+        {"name": "city_country", "type": "string"},
+        {"name": "latitude", "type": "double"},
+        {"name": "longitude", "type": "double"},
+        {"name": "timestamp", "type": "timestamp"},
+        {"name": "temperature_c", "type": "double"},
+        {"name": "wind_speed_kmh", "type": "double"},
+        {"name": "wind_direction_deg", "type": "int"},
+        {"name": "pm25_ug_m3", "type": "double"},
+        {"name": "humidity_pct", "type": "int"},
+        {"name": "seed_id", "type": "string"}
+      ]
+    }
+  }
+}
