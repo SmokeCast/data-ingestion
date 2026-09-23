@@ -60,25 +60,20 @@ extrae, sube los archivos y termina. Compose no actúa como planificador.
 
 ## Ejecución periódica con cron
 
-En la MV de ingesta se puede programar el Compose con el cron del sistema. Por
-ejemplo, si el proyecto está instalado en `/opt/smokecast/mv_ingesta`, crea un
-script ejecutable `/usr/local/bin/smokecast-ingesta.sh`:
+En la MV de ingesta se puede programar el Compose con el cron del sistema. El
+repositorio de infraestructura incluye el script ejecutable
+`containers-and-seeds/mv_ingesta/run-ingestion.sh`. Si el proyecto está
+instalado en `/opt/smokecast/mv_ingesta`, puedes ejecutarlo directamente:
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-cd /opt/smokecast/mv_ingesta
-flock -n /var/run/smokecast-ingesta.lock bash -c '
-  docker compose --env-file .env run --rm fires-ingestion &&
-  docker compose --env-file .env run --rm cities-ingestion &&
-  docker compose --env-file .env run --rm weather-ingestion
-'
+chmod +x /opt/smokecast/mv_ingesta/run-ingestion.sh
+/opt/smokecast/mv_ingesta/run-ingestion.sh
 ```
 
 Después registra, por ejemplo, una ejecución diaria a las 02:00:
 
 ```cron
-0 2 * * * /usr/local/bin/smokecast-ingesta.sh >> /var/log/smokecast-ingesta.log 2>&1
+0 2 * * * /opt/smokecast/mv_ingesta/run-ingestion.sh >> /var/log/smokecast-ingesta.log 2>&1
 ```
 
 `flock` evita que una ejecución nueva empiece mientras la anterior sigue
