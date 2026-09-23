@@ -60,17 +60,13 @@ extrae, sube los archivos y termina. Compose no actúa como planificador.
 
 ## Ejecución periódica con cron
 
-En la MV de ingesta se puede programar el Compose con el cron del sistema. El
-repositorio de infraestructura incluye el script ejecutable
-`containers-and-seeds/mv_ingesta/run-ingestion.sh`. Si el proyecto está
-instalado en `/opt/smokecast/mv_ingesta`, puedes ejecutarlo directamente:
+Cron inicia el job en cada horario; no deja los workers ejecutándose entre una
+ejecución y otra. El script listo para usar está en
+`containers-and-seeds/mv_ingesta/run-ingestion.sh`. La guía paso a paso para
+instalar cron, preparar `.env`, probar el script, registrar el crontab y revisar
+logs está en el README de `mv_ingesta`.
 
-```bash
-chmod +x /opt/smokecast/mv_ingesta/run-ingestion.sh
-/opt/smokecast/mv_ingesta/run-ingestion.sh
-```
-
-Después registra, por ejemplo, una ejecución diaria a las 02:00:
+El ejemplo diario es:
 
 ```cron
 0 2 * * * /opt/smokecast/mv_ingesta/run-ingestion.sh >> /var/log/smokecast-ingesta.log 2>&1
@@ -78,8 +74,6 @@ Después registra, por ejemplo, una ejecución diaria a las 02:00:
 
 `flock` evita que una ejecución nueva empiece mientras la anterior sigue
 leyendo o subiendo datos. Para otra frecuencia cambia la expresión de cron.
-También se puede usar un timer de systemd, pero no es necesario para esta
-arquitectura.
 
 Cada ejecución crea objetos nuevos con marca temporal bajo `ms1/`, `ms2/` y
 `ms3/`; no elimina los archivos anteriores. Esto permite conservar el histórico
