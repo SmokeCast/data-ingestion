@@ -12,14 +12,14 @@ Los nombres, columnas y tipos canónicos para Glue/Athena están en
 MS1, MS2 y MS3; no agregan columnas como `seed_id` a las tablas SQL.
 
 El JSON es una referencia y no crea recursos de AWS por sí solo. Para crear la
-infraestructura completa con CloudFormation usa la plantilla unificada
-`iac_containers_and_scripting/iac_cloudformation/iac_crear_smokecast_infraestructura_ingesta.yml`.
-La plantilla crea la MV de ingesta, el bucket S3, `smokecast_analytics` y sus
-cinco tablas Glue, usando CSV para MS1/MS2 y JSON Lines para MS3:
+infraestructura de la MV de ingesta, el bucket S3, `smokecast_analytics` y las
+cinco tablas de Glue usa la plantilla
+`iac_containers_and_scripting/iac_cloudformation/iac_crear_smokecast_ingesta.yml`.
+La plantilla usa CSV para MS1/MS2 y JSON Lines para MS3:
 
 ```bash
 aws cloudformation deploy \
-  --template-file iac_containers_and_scripting/iac_cloudformation/iac_crear_smokecast_infraestructura_ingesta.yml \
+  --template-file iac_containers_and_scripting/iac_cloudformation/iac_crear_smokecast_ingesta.yml \
   --stack-name smokecast-ingesta \
   --parameter-overrides BucketName=smokecast-datalake
 ```
@@ -55,5 +55,38 @@ docker compose run --rm cities-ingestion
 docker compose run --rm weather-ingestion
 ```
 
-Los servicios tienen `restart: "no"` porque la ingesta es un proceso puntual.
-Si quieres repetir la carga completa, vuelve a ejecutar los tres comandos.
+Los servicios tienen `restart: "no"` porque cada ejecución es un job puntual:
+extrae, sube los archivos y termina. Compose no actúa como planificador.
+
+## Ejecución periódica con cron
+
+En la MV de ingesta se puede programar el Compose con el cron del sistema. Por
+ejemplo, si el proyecto está instalado en `/opt/smokecast/mv_ingesta`, crea un
+script ejecutable `/usr/local/bin/smokecast-ingesta.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd /opt/smokecast/mv_ingesta
+flock -n /var/run/smokecast-ingesta.lock bash -c '
+  docker compose --env-file .env run --rm fires-ingestion &&
+  docker compose --env-file .env run --rm cities-ingestion &&
+  docker compose --env-file .env run --rm weather-ingestion
+'
+```
+
+Después registra, por ejemplo, una ejecución diaria a las 02:00:
+
+```cron
+0 2 * * * /usr/local/bin/smokecast-ingesta.sh >> /var/log/smokecast-ingesta.log 2>&1
+```
+
+`flock` evita que una ejecución nueva empiece mientras la anterior sigue
+leyendo o subiendo datos. Para otra frecuencia cambia la expresión de cron.
+También se puede usar un timer de systemd, pero no es necesario para esta
+arquitectura.
+
+Cada ejecución crea objetos nuevos con marca temporal bajo `ms1/`, `ms2/` y
+`ms3/`; no elimina los archivos anteriores. Esto permite conservar el histórico
+para Athena. Si se desea retener solamente una ventana de tiempo, configura
+una regla de ciclo de vida del bucket S3.
